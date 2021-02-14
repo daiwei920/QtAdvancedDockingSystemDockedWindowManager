@@ -57,11 +57,12 @@ int test1()
 	//nodes.push_back(new DockLayoutManager::DockAreaNode(area3D, VIEW_NAME_HELP));
 
 
-	DockLayoutManager mgr(nodes);
+	DockLayoutManager mgr;
+	mgr.Load(nodes);
 	//mgr.Dump();
 	mgr.Sort();
 	mgr.Dump();
-	mgr.Draw();
+	mgr.Build();
 	mgr.Print();
 	mgr.PrintInstructions();
 	
@@ -108,11 +109,12 @@ int test2()
 	nodes.push_back(new DockLayoutManager::DockAreaNode(areaCoverage, VIEW_NAME_COVERAGE));
 
 
-	DockLayoutManager mgr(nodes);
+	DockLayoutManager mgr;
+	mgr.Load(nodes);
 	//mgr.Dump();
 	mgr.Sort();
 	mgr.Dump();
-	mgr.Draw();
+	mgr.Build();
 	mgr.Print();
 	mgr.PrintInstructions();
 

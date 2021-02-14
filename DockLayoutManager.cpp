@@ -2,18 +2,23 @@
 #include "stdio.h"
 #include <algorithm>
 
-DockLayoutManager::DockLayoutManager(std::list<DockLayoutManager::DockAreaNode*> nodes)
+DockLayoutManager::DockLayoutManager()
+{
+
+}
+
+DockLayoutManager::~DockLayoutManager()
+{
+
+}
+
+void DockLayoutManager::Load(std::list<DockAreaNode*> nodes)
 {
 	m_NodeRoot = new DockAreaNode(nullptr, "Root");
 	for (auto node : nodes)
 	{
 		Load(node);
 	}
-}
-
-DockLayoutManager::~DockLayoutManager()
-{
-
 }
 
 void DockLayoutManager::Load(DockAreaNode* node)
@@ -140,7 +145,7 @@ void DockLayoutManager::Sort(DockLayoutManager::DockAreaNode* node)
 	}
 }
 
-void DockLayoutManager::Draw()
+void DockLayoutManager::Build()
 {
 	std::list<DockAreaNode*> path;
 	path.push_back(m_NodeRoot);
@@ -172,10 +177,56 @@ void DockLayoutManager::BuildNodePath(DockAreaNode* node, std::list<DockAreaNode
 	path.pop_back();
 }
 
+bool sortNode(std::pair<std::string, int> i, std::pair<std::string, int> j)
+{
+	return i.second < j.second;
+}
+
+int FindIndex(const std::vector<std::pair<std::string, int>>& records, const std::string& item)
+{
+	for (int i = 0; i < (int)records.size(); i++)
+	{
+		if (records[i].first == item)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
 void DockLayoutManager::BuildInstructions()
 {
-	// build the global absolute position
-	std::list<std::pair<QRect, std::string>> nodes;
+	// restore the depth of the node, and sort it - it is also the order when building the layout
+	std::vector<std::pair<std::string, int>> depthOrder;
+	for (auto node : m_mapNodes)
+	{
+		std::string name = node.first;
+		std::list<DockAreaNode*> path = node.second;
+		int depth = path.size();
+		for (auto iter = path.rbegin(); iter != path.rend(); iter++)
+		{
+			if (!(*iter)->m_Area)
+			{
+				break;
+			}
+			if ((*iter)->m_Area->geometry().x != 0 || (*iter)->m_Area->geometry().y != 0)
+			{
+				break;
+			}
+			if ((*iter)->parent->m_WindowId != "")
+			{
+				break;
+			}
+			depth -= 1;
+		}
+		depthOrder.push_back({ name, depth });
+	}
+
+	// sort the order as building order
+	std::sort(depthOrder.begin(), depthOrder.end(), sortNode);
+
+	// restores the global position of the windows
+	std::vector<QRect> nodes((int)depthOrder.size(), QRect());
 	for (auto node : m_mapNodes)
 	{
 		std::string nodeName = node.first;
@@ -197,19 +248,23 @@ void DockLayoutManager::BuildInstructions()
 				point.width = path->m_Area->geometry().width;
 			}
 		}
-		
-		nodes.push_back({ point, nodeName });
+
+		// Find the node in ordered list
+		for (int i = 0; i < (int)depthOrder.size(); i++)
+		{
+			if (depthOrder[i].first == nodeName)
+			{
+				nodes[i] = point;
+				break;
+			}
+		}
 	}
 
-	// sort the points
-	nodes.sort(comparePairNodes);
-
-	// build instructions
-	for (auto iter = nodes.begin(); iter != nodes.end(); iter++)
+	// build the layout instructions
+	for (int index = 0; index < (int)nodes.size(); index++)
 	{
-		const QRect currentPoint = iter->first;
-		const std::string currentPointName = iter->second;
-		// add the instruction
+		const QRect currentPoint = nodes[index];
+		const std::string currentPointName = depthOrder[index].first;
 		if (m_Instructions.empty())
 		{
 			// for the first window, we add it to the LEFT
@@ -220,12 +275,12 @@ void DockLayoutManager::BuildInstructions()
 			std::string parentNodeName = "";
 			Position posRelative;
 			// find the relative node with either x the same or y
-			auto iterFindRelative = iter;
-			while (iterFindRelative != nodes.begin())
+			int relativeIndex = index;
+			while (relativeIndex >= 0)
 			{
-				iterFindRelative--;
-				const QRect relativePoint = iterFindRelative->first;
-				const std::string relativePointName = iterFindRelative->second;
+				relativeIndex--;
+				const QRect relativePoint = nodes[relativeIndex];
+				const std::string relativePointName = depthOrder[relativeIndex].first;
 
 				// if either x or y is the same, it means we can find the relative position,
 				// Also considering the width/height
@@ -247,6 +302,7 @@ void DockLayoutManager::BuildInstructions()
 	}
 }
 
+// This function is to identify the related position of two rectangles. 
 Position DockLayoutManager::GetPostionOfTwoPoints(const QRect& first, const QRect& second)
 {
 	if (first.x == second.x)
@@ -255,7 +311,7 @@ Position DockLayoutManager::GetPostionOfTwoPoints(const QRect& first, const QRec
 		{
 			return CENTER;
 		}
-		else if (first.y < second.y)
+		if (first.y < second.y)
 		{
 			return BOTTOM;
 		}
@@ -267,27 +323,39 @@ Position DockLayoutManager::GetPostionOfTwoPoints(const QRect& first, const QRec
 		{
 			return RIGHT;
 		}
-		else if (first.y < second.y)
+		if (first.y < second.y)
 		{
-			// bottom right
-			return BOTTOM; // should not happen, we have sorted already!
+			if (first.x + first.width < second.x)
+			{
+				return RIGHT;
+			}
+			return BOTTOM;
 		}
-		// top right
-		return RIGHT; // should not happen, we have sorted already!
+		if (first.y > second.y + second.height)
+		{
+			return TOP;
+		}
+		return RIGHT; 
 	}
 	else
 	{
 		if (first.y == second.y)
 		{
-			return LEFT; // should not happen, we have sorted already!
+			return LEFT;
 		}
-		else if (first.y < second.y)
+		if (first.y < second.y)
 		{
-			// bottom left
-			return LEFT; // should not happen, we have sorted already!
+			if (first.y + first.height < second.y)
+			{
+				return BOTTOM;
+			}
+			return LEFT;
 		}
-		// top left
-		return TOP;  // should not happen, we have sorted already!
+		if (first.y > second.y + second.height)
+		{
+			return TOP;
+		}
+		return LEFT;
 	}
 }
 

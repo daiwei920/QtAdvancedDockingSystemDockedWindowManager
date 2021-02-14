@@ -33,8 +33,11 @@ public:
 	};
 
 
-	DockLayoutManager(std::list<DockAreaNode*> nodes);
+	DockLayoutManager();
 	~DockLayoutManager();
+
+
+	void Load(std::list<DockAreaNode*> nodes);
 
 	void Dump();
 	void Dump(DockAreaNode* node, int recursiveLevel = 0);
@@ -42,7 +45,7 @@ public:
 	void Sort();
 	void Sort(DockAreaNode* node);
 
-	void Draw();
+	void Build();
 	
 
 	void Print();
@@ -51,7 +54,7 @@ public:
 private:
 	std::list<DockAreaNode*> m_Nodes;
 	std::list<DockDraw> m_Instructions;
-	std::list<std::pair<std::string, std::list<DockAreaNode*>>> m_mapNodes;
+	std::vector<std::pair<std::string, std::list<DockAreaNode*>>> m_mapNodes;
 
 	DockAreaNode* m_NodeRoot = nullptr;
 
