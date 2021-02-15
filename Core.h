@@ -30,6 +30,11 @@ public:
 		return lhs.x == rhs.x && lhs.y == rhs.y &&
 			lhs.width == rhs.width && lhs.height == rhs.height;
 	}
+
+	friend bool operator!=(const QRect& lhs, const QRect& rhs)
+	{
+		return !(lhs == rhs);
+	}
 };
 
 class CDockAreaWidget

@@ -68,4 +68,8 @@ private:
 	void BuildInstructions();
 
 	Position GetPostionOfTwoPoints(const QRect& first, const QRect& second);
+
+	int GetLowestCommonAncestor(const std::list<DockAreaNode*>& path1, const std::list<DockAreaNode*>& path2);
+
+
 };

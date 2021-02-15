@@ -182,18 +182,6 @@ bool sortNode(std::pair<std::string, int> i, std::pair<std::string, int> j)
 	return i.second < j.second;
 }
 
-int FindIndex(const std::vector<std::pair<std::string, int>>& records, const std::string& item)
-{
-	for (int i = 0; i < (int)records.size(); i++)
-	{
-		if (records[i].first == item)
-		{
-			return i;
-		}
-	}
-	return -1;
-}
-
 void DockLayoutManager::BuildInstructions()
 {
 	// restore the depth of the node, and sort it - it is also the order when building the layout
@@ -226,7 +214,13 @@ void DockLayoutManager::BuildInstructions()
 	std::sort(depthOrder.begin(), depthOrder.end(), sortNode);
 
 	// restores the global position of the windows
-	std::vector<QRect> nodes((int)depthOrder.size(), QRect());
+	struct NodeData
+	{
+		std::string name;
+		QRect area = { 0, 0, 0, 0 };
+		std::list<DockAreaNode*> path;
+	};
+	std::vector<NodeData> nodes((int)depthOrder.size(), NodeData());
 	for (auto node : m_mapNodes)
 	{
 		std::string nodeName = node.first;
@@ -254,7 +248,9 @@ void DockLayoutManager::BuildInstructions()
 		{
 			if (depthOrder[i].first == nodeName)
 			{
-				nodes[i] = point;
+				nodes[i].name = nodeName;
+				nodes[i].area = point;
+				nodes[i].path = node.second;
 				break;
 			}
 		}
@@ -263,7 +259,7 @@ void DockLayoutManager::BuildInstructions()
 	// build the layout instructions
 	for (int index = 0; index < (int)nodes.size(); index++)
 	{
-		const QRect currentPoint = nodes[index];
+		const QRect currentPoint = nodes[index].area;
 		const std::string currentPointName = depthOrder[index].first;
 		if (m_Instructions.empty())
 		{
@@ -272,35 +268,54 @@ void DockLayoutManager::BuildInstructions()
 		}
 		else
 		{
-			std::string parentNodeName = "";
-			Position posRelative;
+			int maxNumOfCommonAncestors = -1;
+			int indexOfMaxCommonAncestor = -1;
+
 			// find the relative node with either x the same or y
-			int relativeIndex = index;
-			while (relativeIndex >= 0)
+			for (int searchIndex = 0; searchIndex < index; searchIndex++)
 			{
-				relativeIndex--;
-				const QRect relativePoint = nodes[relativeIndex];
-				const std::string relativePointName = depthOrder[relativeIndex].first;
+				const QRect relativePoint = nodes[searchIndex].area;
 
 				// if either x or y is the same, it means we can find the relative position,
-				// Also considering the width/height
-				const int FRAME_WIDTH = 10;
-				if ((relativePoint.x == currentPoint.x && currentPoint.y - relativePoint.y - relativePoint.height < FRAME_WIDTH) ||
-					(relativePoint.y == currentPoint.y && currentPoint.x - relativePoint.x - relativePoint.width < FRAME_WIDTH))
+				if (relativePoint.x == currentPoint.x || relativePoint.y == currentPoint.y)
 				{
-					parentNodeName = relativePointName;
-					posRelative = GetPostionOfTwoPoints(relativePoint, currentPoint);
-					break;
+					int lca = GetLowestCommonAncestor(nodes[index].path, nodes[searchIndex].path);
+					if (lca > maxNumOfCommonAncestors)
+					{
+						maxNumOfCommonAncestors = lca;
+						indexOfMaxCommonAncestor = searchIndex;
+					}
 				}
 			}
+
 			// we have found the parent node
-			if (parentNodeName != "")
+			if (indexOfMaxCommonAncestor != -1)
 			{
-				m_Instructions.push_back({ currentPointName, parentNodeName, posRelative });
+				Position posRelative = GetPostionOfTwoPoints(nodes[indexOfMaxCommonAncestor].area, currentPoint);
+				m_Instructions.push_back({ currentPointName, nodes[indexOfMaxCommonAncestor].name, posRelative });
 			}
 		}
 	}
 }
+
+int DockLayoutManager::GetLowestCommonAncestor(const std::list<DockAreaNode*>& path1, const std::list<DockAreaNode*>& path2)
+{
+	auto iter1 = path1.begin();
+	auto iter2 = path2.begin();
+	int num = 0;
+	while (iter1 != path1.end() && iter2 != path2.end())
+	{
+		if ((*iter1)->m_Area && (*iter2)->m_Area && (*iter1)->m_Area->geometry() != (*iter2)->m_Area->geometry())
+		{
+			break;
+		}
+		num++;
+		iter1++;
+		iter2++;
+	}
+	return num;
+}
+
 
 // This function is to identify the related position of two rectangles. 
 Position DockLayoutManager::GetPostionOfTwoPoints(const QRect& first, const QRect& second)

@@ -121,8 +121,56 @@ int test2()
 	return 0;
 }
 
+int test3()
+{
+	// simulate a complicated case
+	//   |---|-----------|--------|
+	//   | P | Cross     |        |
+	//   | R |-----------|   3D   |
+	//   | O | Event     |        |
+	//   | J |-----------|--------|
+	//   |   | Image     |  Long  |
+	//   |---|-----------|--------|
+
+
+	CDockAreaWidget* window = new CDockAreaWidget(QRect{ 0, 1, 1280, 902 }, nullptr);
+	CDockAreaWidget* areaProj = new CDockAreaWidget(QRect{ 0, 0, 360, 902 }, window);
+	CDockAreaWidget* areaRight = new CDockAreaWidget(QRect{ 365, 0, 915, 902 }, window);
+	CDockAreaWidget* areaRight2 = new CDockAreaWidget(QRect{ 0, 0, 915, 902 }, areaRight);
+	CDockAreaWidget* areaRightUp = new CDockAreaWidget(QRect{ 0, 0, 915, 625 }, areaRight2);
+	CDockAreaWidget* areaRightUpLeft = new CDockAreaWidget(QRect{ 0, 0, 598, 625 }, areaRightUp);
+	CDockAreaWidget* areaCross = new CDockAreaWidget(QRect{ 0, 0, 598, 310 }, areaRightUpLeft);
+	CDockAreaWidget* areaEvent = new CDockAreaWidget(QRect{ 0, 315, 598, 310 }, areaRightUpLeft);
+	CDockAreaWidget* area3D = new CDockAreaWidget(QRect{ 603, 0, 312, 625 }, areaRightUp);
+	CDockAreaWidget* areaRightDown = new CDockAreaWidget(QRect{ 0, 630, 915, 272 }, areaRight2);
+	CDockAreaWidget* areaImage = new CDockAreaWidget(QRect{ 0, 0, 455, 272 }, areaRightDown);
+	CDockAreaWidget* areaLong = new CDockAreaWidget(QRect{ 460, 0, 455, 272 }, areaRightDown);
+
+	// init dock nodes
+	std::list<DockLayoutManager::DockAreaNode*> nodes;
+
+	nodes.push_back(new DockLayoutManager::DockAreaNode(areaProj, VIEW_NAME_PROJECT_LIST));
+	nodes.push_back(new DockLayoutManager::DockAreaNode(area3D, VIEW_NAME_3D));
+	nodes.push_back(new DockLayoutManager::DockAreaNode(areaImage, VIEW_NAME_IMAGE));
+	nodes.push_back(new DockLayoutManager::DockAreaNode(areaCross, VIEW_NAME_CROSSSECTION));
+	nodes.push_back(new DockLayoutManager::DockAreaNode(areaLong, VIEW_NAME_LONG_PROFILE));
+	nodes.push_back(new DockLayoutManager::DockAreaNode(areaEvent, VIEW_NAME_EVENT_GRID));
+
+	DockLayoutManager mgr;
+	mgr.Load(nodes);
+	//mgr.Dump();
+	mgr.Sort();
+	mgr.Dump();
+	mgr.Build();
+	mgr.Print();
+	mgr.PrintInstructions();
+
+	return 0;
+
+}
+
 
 int main()
 {
-	return test2();
+	return test3();
 }
