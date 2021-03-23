@@ -113,7 +113,7 @@ bool compareRect(const QRect& first, const QRect& second)
 {
 	if (first.y == second.y)
 	{
-		return first.x < second.x;
+		return first.x > second.x;
 	}
 	return first.y < second.y;
 }
@@ -151,6 +151,8 @@ void DockLayoutManager::Build()
 	path.push_back(m_NodeRoot);
 	for (auto root : m_NodeRoot->m_Children)
 	{
+		m_mapNodes.clear();
+
 		// iterate the tree and build the path for LCA (Lowest Common Ancestor)
 		BuildNodePath(root, path);
 
@@ -261,7 +263,7 @@ void DockLayoutManager::BuildInstructions()
 	{
 		const QRect currentPoint = nodes[index].area;
 		const std::string currentPointName = depthOrder[index].first;
-		if (m_Instructions.empty())
+		if (index == 0)
 		{
 			// for the first window, we add it to the LEFT
 			m_Instructions.push_back({ currentPointName, "", LEFT });
@@ -280,7 +282,7 @@ void DockLayoutManager::BuildInstructions()
 				if (relativePoint.x == currentPoint.x || relativePoint.y == currentPoint.y)
 				{
 					int lca = GetLowestCommonAncestor(nodes[index].path, nodes[searchIndex].path);
-					if (lca > maxNumOfCommonAncestors)
+					if (lca >= maxNumOfCommonAncestors)
 					{
 						maxNumOfCommonAncestors = lca;
 						indexOfMaxCommonAncestor = searchIndex;
@@ -374,7 +376,7 @@ Position DockLayoutManager::GetPostionOfTwoPoints(const QRect& first, const QRec
 	}
 }
 
-void DockLayoutManager::Print()
+void DockLayoutManager::PrintNodePath()
 {
 	for (auto iter = m_mapNodes.begin(); iter != m_mapNodes.end(); iter++)
 	{
@@ -392,7 +394,7 @@ void DockLayoutManager::Print()
 	}
 }
 
-void DockLayoutManager::PrintInstructions()
+std::list<DockLayoutManager::DockDraw> DockLayoutManager::PrintInstructions()
 {
 	for (auto iter = m_Instructions.begin(); iter != m_Instructions.end(); iter++)
 	{
@@ -406,4 +408,5 @@ void DockLayoutManager::PrintInstructions()
 		}
 		printf("%20s %6s of the window: %s\n", iter->name.c_str(), pos.c_str(), iter->parentName.c_str());
 	}
+	return m_Instructions;
 }

@@ -30,6 +30,11 @@ public:
 		std::string name;
 		std::string parentName;
 		Position pos; // the relative position of parent window
+
+		friend bool operator==(const DockDraw& lhs, const DockDraw& rhs)
+		{
+			return lhs.name == rhs.name && lhs.parentName == rhs.parentName && lhs.pos == rhs.pos;
+		}
 	};
 
 
@@ -48,8 +53,8 @@ public:
 	void Build();
 	
 
-	void Print();
-	void PrintInstructions();
+	void PrintNodePath();
+	std::list<DockDraw> PrintInstructions();
 
 private:
 	std::list<DockAreaNode*> m_Nodes;
